@@ -1,56 +1,118 @@
 package com.example.contact;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 
-import androidx.activity.EdgeToEdge;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
-import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.Toast;
+import com.example.contact.AppExecutor;
+import com.example.contact.R;
+import com.example.contact.ContactAdapter;
+import com.example.contact.DBHelper;
+import com.example.contact.Contact;
 
-public class MainActivity extends AppCompatActivity {
+import java.util.List;
+
+public class MainActivity extends AppCompatActivity implements ContactAdapter.OnContactClickListener {
+    private RecyclerView recyclerView;
+    private DBHelper dbHelper;
+    private ContactAdapter adapter;
+    private List<Contact> contacts;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+
+        recyclerView = findViewById(R.id.recyclerView);
+        dbHelper = new DBHelper(this);
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        findViewById(R.id.fabAdd).setOnClickListener(v -> {
+            startActivity(new Intent(MainActivity.this, AddEditContactActivity.class));
         });
+    }
 
-        EditText email_input = findViewById(R.id.emailInput);
-        EditText password_input = findViewById(R.id.passwordInput);
-        Button login_button = findViewById(R.id.loginButton);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadContacts();
+    }
 
-        login_button.setOnClickListener(new View.OnClickListener() {
+    private void loadContacts() {
+        AppExecutor.getInstance().diskIO().execute(() -> {
+            contacts = dbHelper.getAllContacts();
+            AppExecutor.getInstance().mainThread().execute(() -> {
+                if (adapter == null) {
+                    adapter = new ContactAdapter(contacts, this);
+                    recyclerView.setAdapter(adapter);
+                } else {
+                    adapter.updateList(contacts);
+                }
+            });
+        });
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        SearchView searchView = (SearchView) searchItem.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
 
             @Override
-            public void onClick(View v) {
-                String email = email_input.getText().toString();
-                String password = password_input.getText().toString();
-
-                if (email.isEmpty() || password.isEmpty()) {
-                    Toast.makeText(MainActivity.this, "Please enter your email and password", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                if (email.equals("admin") && password.equals("admin")) {
-                    Intent intent = new Intent(MainActivity.this, HomePage.class);
-                    intent.putExtra("email", email);
-                    startActivity(intent);
-                    Toast.makeText(MainActivity.this, "Login Successful", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(MainActivity.this, "Login Failed", Toast.LENGTH_SHORT).show();
-                }
+            public boolean onQueryTextChange(String newText) {
+                adapter.getFilter().filter(newText);
+                return false;
             }
         });
+
+        return true;
+    }
+
+    @Override
+    public void onContactClick(Contact contact) {
+        Intent intent = new Intent(MainActivity.this, ContactDetailActivity.class);
+        intent.putExtra("contact_id", contact.getId());
+        startActivity(intent);
+    }
+
+    @Override
+    public void onEditClick(Contact contact) {
+        Intent intent = new Intent(MainActivity.this, AddEditContactActivity.class);
+        intent.putExtra("contact_id", contact.getId());
+        startActivity(intent);
+    }
+
+    @Override
+    public void onDeleteClick(Contact contact) {
+        new AlertDialog.Builder(this)
+                .setTitle("Delete Contact")
+                .setMessage("Are you sure you want to delete this contact?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    AppExecutor.getInstance().diskIO().execute(() -> {
+                        dbHelper.deleteContact(contact.getId());
+                        AppExecutor.getInstance().mainThread().execute(() -> loadContacts());
+                    });
+                })
+                .setNegativeButton("No", null)
+                .show();
     }
 }

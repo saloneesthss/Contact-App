@@ -12,7 +12,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Contact">
         <activity
-            android:name=".HomePage"
+            android:name=".ContactDetailActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AddEditContactActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
