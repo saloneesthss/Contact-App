@@ -4,12 +4,5 @@
     <string name="email">Email</string>
     <string name="password">Password</string>
     <string name="login_text">Login</string>
-
-    <string name="welcome_message">Welcome to the Home Page</string>
-
-    <string-array name="country">
-        <item>Nepal</item>
-        <item>China</item>
-        <item>Korea</item>
-    </string-array>
+    <string name="add_contact_title">Add Contact</string>
 </resources>
