@@ -15,6 +15,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:navigationIcon="@drawable/ic_close"
+            android:layout_marginTop="40dp"
             app:title="@string/add_contact_title" />
 
     </com.google.android.material.appbar.AppBarLayout>
