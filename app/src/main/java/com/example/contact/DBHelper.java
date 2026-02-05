@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
 
 import com.example.contact.Contact;
 
@@ -23,6 +24,17 @@ public class DBHelper extends SQLiteOpenHelper {
     private static final String COL_PHONE = "phone";
     private static final String COL_EMAIL = "email";
 
+    private static final String TABLE_USERS = "users";
+    private static final String COL_USER_ID = "id";
+    private static final String COL_USERNAME = "username";
+    private static final String COL_USER_EMAIL = "email";
+    private static final String COL_PASSWORD = "password";
+    private static final String CREATE_TABLE_USERS = "CREATE TABLE " + TABLE_USERS + " (" +
+            COL_USER_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
+            COL_USERNAME + " TEXT UNIQUE, " +
+            COL_USER_EMAIL + " TEXT UNIQUE, " +
+            COL_PASSWORD + " TEXT)";
+
     public DBHelper(Context context) {
         super(context, DB_NAME, null, DB_VERSION);
     }
@@ -37,14 +49,17 @@ public class DBHelper extends SQLiteOpenHelper {
                 COL_PHONE + " TEXT," +
                 COL_EMAIL + " TEXT)";
         db.execSQL(query);
+        db.execSQL(CREATE_TABLE_USERS);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_NAME);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USERS);
         onCreate(db);
     }
 
+    // Contact functions
     public void insertContact(Contact contact) {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
@@ -119,5 +134,36 @@ public class DBHelper extends SQLiteOpenHelper {
         cursor.close();
         db.close();
         return list;
+    }
+
+    // User functions
+    public boolean registerUser(String username, String email, String password) {
+        SQLiteDatabase db = getWritableDatabase();
+        Cursor cursor = db.rawQuery(
+                "SELECT id FROM " + TABLE_USERS + " WHERE " + COL_USER_EMAIL + "=?",
+                new String[]{email}
+        );
+
+        if (cursor.getCount() > 0) {
+            cursor.close();
+            return false;
+        }
+        cursor.close();
+        ContentValues values = new ContentValues();
+        values.put(COL_USERNAME, username);
+        values.put(COL_USER_EMAIL, email);
+        values.put(COL_PASSWORD, password);
+        long result = db.insert(TABLE_USERS, null, values);
+        return result != -1;
+    }
+    public boolean loginUser(String email, String password) {
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.rawQuery(
+                "SELECT id FROM " + TABLE_USERS + " WHERE email=? AND password=?",
+                new String[]{email, password}
+        );
+        boolean loggedIn = cursor.moveToFirst();
+        cursor.close();
+        return loggedIn;
     }
 }
